@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../components/files.dart'; // FileList 임포트
+import '../components/files.dart';
 
 class FileScreen extends StatefulWidget {
   @override
@@ -13,7 +13,7 @@ class _FileScreenState extends State<FileScreen> {
       appBar: AppBar(
         title: Text('파일 목록'),
       ),
-      body: FileList(), // FileList 위젯 사용
+      body: FileList(),
     );
   }
 }

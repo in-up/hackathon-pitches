@@ -1,16 +1,16 @@
 import 'package:flutter/material.dart';
-import '../app/now_record.dart';
+import '../app/now_record.dart'; // 필요에 따라 임포트
 import '../app/home.dart'; // HomeScreen 경로 확인
 
 class BreathingButton extends StatefulWidget {
   final Color borderColor; // 버튼의 테두리 색상
   final Color pressedColor; // 버튼이 눌렸을 때 색상
-  final bool isFromNowRecord; // 현재 화면에서 호출된 것인지 여부
+  final VoidCallback? onPressed; // 클릭 시 호출될 콜백
 
   BreathingButton({
     this.borderColor = Colors.black,
     this.pressedColor = Colors.red,
-    this.isFromNowRecord = false,
+    this.onPressed, // 기본값은 null
   });
 
   @override
@@ -21,7 +21,6 @@ class _BreathingButtonState extends State<BreathingButton>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _animation;
-  bool _isPressed = false; // 버튼이 눌렸는지 여부
 
   @override
   void initState() {
@@ -46,29 +45,14 @@ class _BreathingButtonState extends State<BreathingButton>
     super.dispose();
   }
 
-  void _onPressed() {
-    setState(() {
-      _isPressed = !_isPressed; // 버튼 눌림 상태 토글
-    });
-    print('Button pressed!');
-
-    if (widget.isFromNowRecord) {
-      // 현재 화면에서 호출되면 HomeScreen으로 돌아가기
-      Navigator.of(context).pop(); // 이전 화면으로 돌아가기
-    } else {
-      // HomeScreen에서 호출되면 NowRecordScreen으로 이동
-      Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (context) => NowRecordScreen(),
-        ),
-      );
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: _onPressed,
+      onTap: () {
+        if (widget.onPressed != null) {
+          widget.onPressed!();
+        }
+      },
       child: AnimatedBuilder(
         animation: _animation,
         builder: (context, child) {
@@ -77,7 +61,7 @@ class _BreathingButtonState extends State<BreathingButton>
             height: _animation.value,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              border: Border.all(color: _isPressed ? widget.pressedColor : widget.borderColor, width: 25),
+              border: Border.all(color: widget.pressedColor, width: 25),
             ),
           );
         },
