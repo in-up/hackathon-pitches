@@ -19,9 +19,9 @@ class _FileListState extends State<FileList> {
       itemCount: files.length,
       itemBuilder: (context, index) {
         return ListTile(
-          leading: Icon(Icons.description), // 문서 모양 아이콘
-          title: Text(files[index]['title']!), // 파일 제목
-          trailing: Text(files[index]['time']!), // 시간
+          leading: Icon(Icons.description_outlined, color: Colors.black,),
+          title: Text(files[index]['title']!),
+          trailing: Text(files[index]['time']!),
         );
       },
     );

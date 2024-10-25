@@ -1,11 +1,6 @@
-import 'package:flutter/foundation.dart';
-import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:hive/hive.dart';
-import 'package:intl/intl.dart';
-import 'package:pitches/components/files.dart';
-
+import '../components/files.dart';
 import '../components/halo.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -63,11 +58,10 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        // title: Text('Pitches', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
         leading: IconButton(
           icon: Icon(Icons.menu),
           onPressed: () {
-            // 햄버거 메뉴 버튼 클릭 시 처리
+            Navigator.pushNamed(context, '/menu');
           },
         ),
         actions: [
@@ -78,31 +72,63 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
       backgroundColor: Theme.of(context).canvasColor,
-      body: Padding(
+      body: SingleChildScrollView( // Scrollable하게 만들기
         padding: const EdgeInsets.symmetric(horizontal: 20),
         child: Column(
           children: [
-            SizedBox(
-              height: 100,
-            ),
+            SizedBox(height: 100),
             SizedBox(
               height: 200,
               child: Center(
-                  child: Column(
-                children: [
-                  BreathingButton(),
-                ],
-              )),
+                child: Column(
+                  children: [
+                    BreathingButton(),
+                  ],
+                ),
+              ),
             ),
             Text(
               '버튼을 누르고\n스피치를 시작하세요',
               style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
               textAlign: TextAlign.center,
             ),
-            Container(
-              height: 200, // 원하는 높이로 설정
-              child: FileList(),
+            SizedBox(
+              height: 100,
             ),
+            Container(
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.grey.withOpacity(0.5)), // 연한 회색 테두리
+                borderRadius: BorderRadius.circular(12), // 둥근 테두리
+              ),
+              child: SizedBox(
+                child: Column(
+                  children: [
+                    Row(
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+                          child: Text(
+                            '최근 스피치',
+                            textAlign: TextAlign.left,
+                            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+                          ),
+                        ),
+                      ],
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 10),
+                      child: SizedBox(
+                        height: 200,
+                        child: FileList(),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            SizedBox(
+              height: 100,
+            )
           ],
         ),
       ),
