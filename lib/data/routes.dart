@@ -5,5 +5,4 @@ final Widget homeRoute = HomeScreen();
 
 final Map<String, WidgetBuilder> routes = {
   '/home': (context) => HomeScreen(),
-
 };

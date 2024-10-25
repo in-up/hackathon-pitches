@@ -4,6 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:hive/hive.dart';
 import 'package:intl/intl.dart';
+import 'package:pitches/components/files.dart';
+
+import '../components/halo.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -58,14 +61,48 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-
     return Scaffold(
+      appBar: AppBar(
+        // title: Text('Pitches', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+        leading: IconButton(
+          icon: Icon(Icons.menu),
+          onPressed: () {
+            // 햄버거 메뉴 버튼 클릭 시 처리
+          },
+        ),
+        actions: [
+          CircleAvatar(
+            backgroundImage: NetworkImage('https://picsum.photos/200'),
+          ),
+          SizedBox(width: 10),
+        ],
+      ),
       backgroundColor: Theme.of(context).canvasColor,
       body: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 20),
         child: Column(
           children: [
-            Text('테스트 텍스트')
+            SizedBox(
+              height: 100,
+            ),
+            SizedBox(
+              height: 200,
+              child: Center(
+                  child: Column(
+                children: [
+                  BreathingButton(),
+                ],
+              )),
+            ),
+            Text(
+              '버튼을 누르고\n스피치를 시작하세요',
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+              textAlign: TextAlign.center,
+            ),
+            Container(
+              height: 200, // 원하는 높이로 설정
+              child: FileList(),
+            ),
           ],
         ),
       ),
