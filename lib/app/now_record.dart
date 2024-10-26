@@ -101,8 +101,6 @@ class _NowRecordScreenState extends State<NowRecordScreen> {
               if (response.statusCode == 200) {
                 print('파일 업로드 성공');
                 print('서버 응답: ${responseBody.body}');
-                // 서버 응답을 Hive에 저장
-                await saveToHive(bytes, responseBody.body);
               } else {
                 print('파일 업로드 실패: ${response.statusCode}');
                 print('서버 응답: ${responseBody.body}');
@@ -113,6 +111,7 @@ class _NowRecordScreenState extends State<NowRecordScreen> {
           } else {
             print('전송할 바이트 배열이 비어 있습니다.');
           }
+          Navigator.pushNamed(context, '/loading', arguments: lastWords);
         });
       });
 
