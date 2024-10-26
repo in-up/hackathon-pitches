@@ -58,32 +58,28 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        leading: IconButton(
-          icon: Icon(Icons.menu),
-          onPressed: () {
-            Navigator.pushNamed(context, '/menu');
-          },
-        ),
         actions: [
-          CircleAvatar(
-            backgroundImage: NetworkImage('https://picsum.photos/200'),
+          IconButton(
+            icon: Icon(Icons.menu),
+            onPressed: () {
+              Navigator.pushNamed(context, '/menu');
+            },
           ),
           SizedBox(width: 10),
         ],
+        title: Text(' Pitches.ai', style: TextStyle(fontSize: 18, fontStyle: FontStyle.italic, fontWeight: FontWeight.w900),),
       ),
       backgroundColor: Theme.of(context).canvasColor,
       body: SingleChildScrollView( // Scrollable하게 만들기
         padding: const EdgeInsets.symmetric(horizontal: 20),
         child: Column(
           children: [
-            SizedBox(height: 100),
+            SizedBox(height: 50),
             SizedBox(
-              height: 200,
+              height: 250,
               child: Center(
-                child: Column(
-                  children: [
-                    BreathingButton(borderColor: Color(0xFF1E0E62), onPressed: (){Navigator.pushNamed(context, '/record');},),
-                  ],
+                child: Center(
+                  child: BreathingButton(borderColor: Color(0xFF1E0E62), onPressed: (){Navigator.pushNamed(context, '/record');},),
                 ),
               ),
             ),
@@ -97,32 +93,43 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             Container(
               decoration: BoxDecoration(
-                border: Border.all(color: Colors.grey.withOpacity(0.5)), // 연한 회색 테두리
-                borderRadius: BorderRadius.circular(12), // 둥근 테두리
+                color: Colors.white, // 배경색 설정
+                borderRadius: BorderRadius.circular(20), // 둥근 테두리
+                boxShadow: [
+                  BoxShadow(
+                    color: Color(0xFF1E0E62).withOpacity(0.1), // 그림자 색상
+                    offset: Offset(0, -4), // 위쪽 방향으로 이동
+                    blurRadius: 20, // 흐림 정도
+                    spreadRadius: 4, // 그림자의 넓이
+                  ),
+                ],
               ),
-              child: SizedBox(
-                child: Column(
-                  children: [
-                    Row(
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
-                          child: Text(
-                            '최근 스피치',
-                            textAlign: TextAlign.left,
-                            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+              child: Padding(
+                padding: const EdgeInsets.all(5.0),
+                child: SizedBox(
+                  child: Column(
+                    children: [
+                      Row(
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+                            child: Text(
+                              '최근 스피치',
+                              textAlign: TextAlign.left,
+                              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+                            ),
                           ),
-                        ),
-                      ],
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 10),
-                      child: SizedBox(
-                        height: 200,
-                        child: FileList(),
+                        ],
                       ),
-                    ),
-                  ],
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 10),
+                        child: SizedBox(
+                          height: 200,
+                          child: FileList(),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),

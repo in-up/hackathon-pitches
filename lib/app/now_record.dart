@@ -24,9 +24,9 @@ class _NowRecordScreenState extends State<NowRecordScreen> {
 
   bool _hasSpeech = false;
   String lastWords = '';
-  Color borderColor = Colors.green; // 초기 borderColor
-  int lastLength = 0; // 마지막 문자열 길이
-  late Timer colorChangeTimer; // 색상 변경 타이머
+  Color borderColor = Color(0xff208368);
+  int lastLength = 0;
+  late Timer colorChangeTimer;
 
   @override
   void initState() {
@@ -141,18 +141,29 @@ class _NowRecordScreenState extends State<NowRecordScreen> {
       }
 
       colorChangeTimer = Timer.periodic(Duration(seconds: 3), (timer) {
-        if (lastWords.length > lastLength) {
-          lastLength = lastWords.length;
-          borderColor = Colors.red;
+        // 현재 lastWords의 길이를 가져옵니다.
+        int currentLength = lastWords.length;
+
+        // 길이 차이를 계산합니다.
+        int difference = currentLength - lastLength;
+
+        // 기준에 따라 색상을 변경합니다.
+        if (difference > 17) {
+          borderColor = Color(0xffCE2C31); // 글자 차이가 17글자 초과일 때 빨간색
         } else {
-          borderColor = Colors.green;
+          borderColor = Color(0xff208368); // 그렇지 않으면 초록색
         }
+
+        // 마지막 길이를 현재 길이로 업데이트합니다.
+        lastLength = currentLength;
+
         setState(() {});
       });
     } else {
       print("mediaDevices가 null입니다. 이 브라우저는 getUserMedia를 지원하지 않을 수 있습니다.");
     }
   }
+
 
   void resultListener(SpeechRecognitionResult result) {
     setState(() {
@@ -294,6 +305,7 @@ class _NowRecordScreenState extends State<NowRecordScreen> {
                 child: BreathingButton(
                   onPressed: stopListening, // 버튼을 누르면 녹음 종료
                   borderColor: borderColor, // borderColor 적용
+                  size: 180.0,
                 ),
               ),
             ),

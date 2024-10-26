@@ -28,6 +28,9 @@ class _MyAppState extends ConsumerState<MyApp> {
         useMaterial3: false,
         canvasColor: Color(0xFFfcfcfc),
         primaryColor: Color(0xFF1E0E62),
+        textTheme: TextTheme(
+          bodyMedium: TextStyle(color: Color(0xFF1E0E62)),
+        ),
         fontFamily: 'Pretendard',
         pageTransitionsTheme: const PageTransitionsTheme(builders: {
           TargetPlatform.android: CupertinoPageTransitionsBuilder(),
@@ -37,9 +40,12 @@ class _MyAppState extends ConsumerState<MyApp> {
         appBarTheme: AppBarTheme(
           color: Colors.transparent,
           elevation: 0,
-          iconTheme: IconThemeData(color: Colors.black),
-          titleTextStyle: TextStyle(color: Colors.black, fontSize: 16)
+          foregroundColor: Color(0xFF1E0E62),
+          actionsIconTheme: IconThemeData(color: Color(0xFF1E0E62)),
+          iconTheme: IconThemeData(color: Color(0xFF1E0E62)),
+          titleTextStyle: TextStyle(color: Color(0xFF1E0E62), fontSize: 16, fontWeight: FontWeight.w700)
         ),
+        listTileTheme: ListTileThemeData(iconColor: Color(0xFF1E0E62), textColor: Color(0xFF1E0E62))
       ),
     );
   }
