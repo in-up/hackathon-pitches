@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert'; // JSON 처리를 위해 추가
 import 'dart:html' as html;
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
@@ -62,12 +63,25 @@ class _NowRecordScreenState extends State<NowRecordScreen> {
       final stream = await mediaDevices.getUserMedia({'audio': true});
       _mediaRecorder = html.MediaRecorder(stream);
 
-      _mediaRecorder?.addEventListener('dataavailable', (html.Event event) {
+      _mediaRecorder?.addEventListener('dataavailable', (html.Event event) async {
         final blobEvent = event as html.BlobEvent;
         final blob = blobEvent.data;
 
         if (blob != null && blob.size > 0) {
           _recordedChunks.add(blob);
+          print('녹음된 Blob 크기: ${blob.size} bytes'); // Blob 크기 확인
+
+          // Blob을 ArrayBuffer로 읽기
+          final reader = html.FileReader();
+          reader.readAsArrayBuffer(blob);
+
+          reader.onLoadEnd.listen((event) async {
+            final bytes = reader.result as Uint8List;
+
+            // saveToHive 메소드 호출
+            // mp3Bytes와 jsonResponse는 어떻게 제공할지 결정해야 합니다.
+            await saveToHive(bytes, '{"title": "녹음 제목"}'); // JSON 응답 예시
+          });
         }
       });
 
@@ -115,7 +129,6 @@ class _NowRecordScreenState extends State<NowRecordScreen> {
         });
       });
 
-
       try {
         print("녹음을 시작합니다...");
         _mediaRecorder?.start();
@@ -149,16 +162,69 @@ class _NowRecordScreenState extends State<NowRecordScreen> {
 
   // Hive에 mp3 파일과 JSON 응답 저장
   Future<void> saveToHive(Uint8List mp3Bytes, String jsonResponse) async {
+    // 'localdata'라는 이름의 박스를 엽니다.
     var box = await Hive.openBox('localdata');
 
-    // mp3 파일 저장
-    await box.put('mp3File', mp3Bytes);
+    // 현재 시간을 가져와서 타임스탬프를 생성합니다.
+    DateTime now = DateTime.now();
+    String timestamp = now.toIso8601String(); // ISO 8601 형식으로 변환
 
-    // JSON 응답 저장
-    await box.put('jsonResponse', jsonResponse);
-    print("mp3 파일과 JSON 응답이 성공적으로 저장되었습니다.");
+    // JSON 파싱하여 제목을 가져옵니다.
+    String title;
+    try {
+      final Map<String, dynamic> jsonMap = json.decode(jsonResponse);
+      title = jsonMap['title'] ?? '제목 없음'; // 제목이 없으면 기본값 설정
+    } catch (e) {
+      title = '제목 없음'; // JSON 파싱 실패 시 기본 제목
+    }
+
+    // 데이터를 리스트 형태로 저장합니다.
+    await box.add({
+      'title': title,        // JSON 제목
+      'timestamp': timestamp,// 현재 시간
+      'json': jsonResponse,  // JSON 응답
+      'wav': mp3Bytes,       // 음성 파일
+    });
+
+    
+  }
+  Future<void> loadFromHive() async {
+    // 'localdata'라는 이름의 박스를 엽니다.
+    var box = await Hive.openBox('localdata');
+
+    // 저장된 데이터 불러오기
+    String? title = box.get('title');
+    String? timestamp = box.get('timestamp');
+    String? jsonResponse = box.get('json');
+    Uint8List? mp3Bytes = box.get('wav');
+
+    // 데이터를 확인합니다.
+    if (title != null) {
+      print("제목: $title");
+    } else {
+      print("제목이 저장되어 있지 않습니다.");
+    }
+
+    if (timestamp != null) {
+      print("타임스탬프: $timestamp");
+    } else {
+      print("타임스탬프가 저장되어 있지 않습니다.");
+    }
+
+    if (jsonResponse != null) {
+      print("JSON 응답: $jsonResponse");
+    } else {
+      print("JSON 응답이 저장되어 있지 않습니다.");
+    }
+
+    if (mp3Bytes != null) {
+      print("mp3 파일 크기: ${mp3Bytes.length} bytes");
+    } else {
+      print("mp3 파일이 저장되어 있지 않습니다.");
+    }
   }
 
+  
   void stopListening() async {
     print('stopListening 호출됨');
     if (speech.isListening) {
@@ -169,15 +235,24 @@ class _NowRecordScreenState extends State<NowRecordScreen> {
         isRecording = false;
       });
       print('녹음이 중지되었습니다.');
+      await loadFromHive();
+      // Blob 생성 전에 _recordedChunks의 상태를 확인합니다.
+      if (_recordedChunks.isNotEmpty) {
+        final blob = html.Blob(_recordedChunks);
+        print('녹음된 Blob 크기: ${blob.size} bytes'); // 확인용 로그 추가
 
-      final blob = html.Blob(_recordedChunks);
-      print('녹음된 Blob 크기: ${blob.size} bytes'); // 확인용 로그 추가
-      final reader = html.FileReader();
-      reader.readAsArrayBuffer(blob);
-
-      reader.onLoadEnd.listen((event) async {
-        final bytes = reader.result as Uint8List;
-      });
+        // Blob을 ArrayBuffer로 읽기
+        final reader = html.FileReader();
+        reader.readAsArrayBuffer(blob);
+        
+        reader.onLoadEnd.listen((event) async {
+          final bytes = reader.result as Uint8List;
+          // bytes를 여기서 처리
+        });
+        
+      } else {
+        print('녹음된 데이터가 없습니다. Blob 크기: 0 bytes');
+      }
     } else {
       print('speech.isListening이 false입니다.');
     }
