@@ -61,7 +61,7 @@ class _FileListState extends State<FileList> {
     'timestamp': files[index]['timestamp'],
     'favorite': isFavorite,
     'description': files[index]['description'],
-    'id': fileId,
+    'id': files[index]['title'],
   });
 
   getFiles();
@@ -99,7 +99,7 @@ class _FileListState extends State<FileList> {
                         title: files[index]['title'],
                         time: _relativeTime(files[index]['timestamp']),
                         description: files[index]['description'],
-                        id: files[index]['id'],
+                        id: files[index]['title'],
                         favorite: files[index]['favorite'],
                       ),
                     ),

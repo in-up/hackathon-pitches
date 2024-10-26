@@ -21,10 +21,10 @@ class _NowRecordScreenState extends State<NowRecordScreen> {
   html.MediaRecorder? _mediaRecorder;
   List<html.Blob> _recordedChunks = [];
   bool isRecording = false;
-
   bool _hasSpeech = false;
   String lastWords = '';
-  Color borderColor = Color(0xff208368);
+  String liveComment = '';
+  Color borderColor = Color(0xFF1E0E62);
   int lastLength = 0;
   late Timer colorChangeTimer;
 
@@ -63,7 +63,8 @@ class _NowRecordScreenState extends State<NowRecordScreen> {
       final stream = await mediaDevices.getUserMedia({'audio': true});
       _mediaRecorder = html.MediaRecorder(stream);
 
-      _mediaRecorder?.addEventListener('dataavailable', (html.Event event) async {
+      _mediaRecorder?.addEventListener('dataavailable',
+          (html.Event event) async {
         final blobEvent = event as html.BlobEvent;
         final blob = blobEvent.data;
 
@@ -82,11 +83,8 @@ class _NowRecordScreenState extends State<NowRecordScreen> {
               final reader = html.FileReader();
               reader.readAsArrayBuffer(blob);
 
-              reader.onLoadEnd.listen((event) async {
-
-              });
+              reader.onLoadEnd.listen((event) async {});
             }
-
           });
         }
       });
@@ -122,7 +120,6 @@ class _NowRecordScreenState extends State<NowRecordScreen> {
                 print('서버 응답: ${responseBody.body}');
 
                 await saveToHive(bytes, responseBody.body);
-
               } else {
                 print('파일 업로드 실패: ${response.statusCode}');
                 print('서버 응답: ${responseBody.body}');
@@ -157,10 +154,15 @@ class _NowRecordScreenState extends State<NowRecordScreen> {
         int difference = currentLength - lastLength;
 
         // 기준에 따라 색상을 변경합니다.
-        if (difference > 20) {
-          borderColor = Color(0xffCE2C31); // 글자 차이가 17글자 초과일 때 빨간색
-        } else {
+        if (difference > 23) {
+          borderColor = Color(0xffCE2C31);
+          liveComment = '스피치 속도가 빨라졌어요';
+        } else if (difference > 2){
           borderColor = Color(0xff208368); // 그렇지 않으면 초록색
+          liveComment = '잘하고 있어요!';
+        } else {
+          borderColor = Color(0xFF1E0E62); // 그렇지 않으면 초록색
+          liveComment = '';
         }
 
         // 마지막 길이를 현재 길이로 업데이트합니다.
@@ -173,7 +175,6 @@ class _NowRecordScreenState extends State<NowRecordScreen> {
     }
   }
 
-
   void resultListener(SpeechRecognitionResult result) {
     setState(() {
       lastWords = result.recognizedWords;
@@ -182,7 +183,6 @@ class _NowRecordScreenState extends State<NowRecordScreen> {
 
   Future<void> saveToHive(Uint8List mp3Bytes, String jsonResponse) async {
     String title = jsonResponse.split('/').last.split('.').first;
-
     String description = lastWords.isNotEmpty ? lastWords : '내용이 없는 스피치입니다.';
 
     DateTime now = DateTime.now();
@@ -203,11 +203,9 @@ class _NowRecordScreenState extends State<NowRecordScreen> {
       'transcript': '', // 기본값: 빈 문자열
     });
 
-
     print('데이터가 Hive에 추가되었습니다: $title');
     printHiveData();
   }
-
 
   Future<void> printHiveData() async {
     var box = await Hive.openBox('localdata');
@@ -220,7 +218,6 @@ class _NowRecordScreenState extends State<NowRecordScreen> {
       print('  설명: ${data['description']}');
     }
   }
-
 
   Future<void> loadFromHive() async {
     var box = await Hive.openBox('localdata');
@@ -255,7 +252,6 @@ class _NowRecordScreenState extends State<NowRecordScreen> {
     }
   }
 
-
   void stopListening() async {
     print('stopListening 호출됨');
     if (speech.isListening) {
@@ -277,7 +273,6 @@ class _NowRecordScreenState extends State<NowRecordScreen> {
         reader.onLoadEnd.listen((event) async {
           final bytes = reader.result as Uint8List;
         });
-
       } else {
         print('녹음된 데이터가 없습니다. Blob 크기: 0 bytes');
       }
@@ -285,7 +280,6 @@ class _NowRecordScreenState extends State<NowRecordScreen> {
       print('speech.isListening이 false입니다.');
     }
   }
-
 
   @override
   void dispose() {
@@ -302,6 +296,10 @@ class _NowRecordScreenState extends State<NowRecordScreen> {
           onPressed: () {
             Navigator.pop(context);
           },
+        ),
+        title: Text(
+          ' 실시간 분석',
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
         ),
       ),
       backgroundColor: Theme.of(context).canvasColor,
@@ -320,7 +318,15 @@ class _NowRecordScreenState extends State<NowRecordScreen> {
                 ),
               ),
             ),
-            SizedBox(height: 100,),
+            SizedBox(
+              height: 100,
+              child: Center(
+                  child: Text(
+                liveComment,
+                style:
+                    TextStyle(fontWeight: FontWeight.w700, color: borderColor, fontSize: 20),
+              )),
+            ),
             if (lastWords.isNotEmpty)
               SingleChildScrollView(
                 child: Padding(
