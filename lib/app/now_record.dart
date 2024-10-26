@@ -23,9 +23,9 @@ class _NowRecordScreenState extends State<NowRecordScreen> {
 
   bool _hasSpeech = false;
   String lastWords = '';
-  Color borderColor = Colors.green; // 초기 borderColor
-  int lastLength = 0; // 마지막 문자열 길이
-  late Timer colorChangeTimer; // 색상 변경 타이머
+  Color borderColor = Color(0xff208368);
+  int lastLength = 0;
+  late Timer colorChangeTimer;
 
   @override
   void initState() {
@@ -135,9 +135,9 @@ class _NowRecordScreenState extends State<NowRecordScreen> {
 
         // 기준에 따라 색상을 변경합니다.
         if (difference > 17) {
-          borderColor = Colors.red; // 글자 차이가 17글자 초과일 때 빨간색
+          borderColor = Color(0xffCE2C31); // 글자 차이가 17글자 초과일 때 빨간색
         } else {
-          borderColor = Colors.green; // 그렇지 않으면 초록색
+          borderColor = Color(0xff208368); // 그렇지 않으면 초록색
         }
 
         // 마지막 길이를 현재 길이로 업데이트합니다.
@@ -229,6 +229,7 @@ class _NowRecordScreenState extends State<NowRecordScreen> {
                 child: BreathingButton(
                   onPressed: stopListening, // 버튼을 누르면 녹음 종료
                   borderColor: borderColor, // borderColor 적용
+                  size: 180.0,
                 ),
               ),
             ),

@@ -58,19 +58,16 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        leading: IconButton(
-          icon: Icon(Icons.menu),
-          onPressed: () {
-            Navigator.pushNamed(context, '/menu');
-          },
-        ),
         actions: [
-          CircleAvatar(
-            backgroundImage: NetworkImage('https://picsum.photos/200'),
+          IconButton(
+            icon: Icon(Icons.menu),
+            onPressed: () {
+              Navigator.pushNamed(context, '/menu');
+            },
           ),
           SizedBox(width: 10),
         ],
-        title: Text('pitches.ai'),
+        title: Text(' Pitches.ai', style: TextStyle(fontSize: 18, fontStyle: FontStyle.italic, fontWeight: FontWeight.w900),),
       ),
       backgroundColor: Theme.of(context).canvasColor,
       body: SingleChildScrollView( // Scrollable하게 만들기
@@ -97,7 +94,7 @@ class _HomeScreenState extends State<HomeScreen> {
             Container(
               decoration: BoxDecoration(
                 color: Colors.white, // 배경색 설정
-                borderRadius: BorderRadius.circular(15), // 둥근 테두리
+                borderRadius: BorderRadius.circular(20), // 둥근 테두리
                 boxShadow: [
                   BoxShadow(
                     color: Color(0xFF1E0E62).withOpacity(0.1), // 그림자 색상
@@ -107,29 +104,32 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ],
               ),
-              child: SizedBox(
-                child: Column(
-                  children: [
-                    Row(
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
-                          child: Text(
-                            '최근 스피치',
-                            textAlign: TextAlign.left,
-                            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+              child: Padding(
+                padding: const EdgeInsets.all(5.0),
+                child: SizedBox(
+                  child: Column(
+                    children: [
+                      Row(
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+                            child: Text(
+                              '최근 스피치',
+                              textAlign: TextAlign.left,
+                              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+                            ),
                           ),
-                        ),
-                      ],
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 10),
-                      child: SizedBox(
-                        height: 200,
-                        child: FileList(),
+                        ],
                       ),
-                    ),
-                  ],
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 10),
+                        child: SizedBox(
+                          height: 200,
+                          child: FileList(),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
