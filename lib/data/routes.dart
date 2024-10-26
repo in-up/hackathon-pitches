@@ -17,6 +17,10 @@ final Map<String, WidgetBuilder> routes = {
   '/record': (context) => NowRecordScreen(),
   '/setting': (context) => SettingsScreen(),
   '/loading': (context) => LoadingScreen(),
-  '/markdown': (context) => MarkdownExample(),
-  '/detail' : (context) => Detail(),
+  '/markdown': (context) => MarkdownExample(
+        id: '',
+        description: '',
+        emotion: '',
+      ),
+  '/detail': (context) => Detail(),
 };

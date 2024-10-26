@@ -5,18 +5,6 @@ import 'package:pitches/app/filelist.dart';
 import '../app/detail.dart';
 import '../app/markdown.dart';
 
-class MyApp extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      home: FileList(), // FileList를 시작 페이지로 설정
-      routes: {
-        '/markdown': (context) => MarkdownExample(), // 라우트 추가
-      },
-    );
-  }
-}
-
 class FileList extends StatefulWidget {
   @override
   _FileListState createState() => _FileListState();
@@ -79,7 +67,7 @@ class _FileListState extends State<FileList> {
               MaterialPageRoute(
                 builder: (context) => Detail(
                   title: files[index]['title'], // title 전달
-                  time: _relativeTime(files[index]['timestamp']), // 상대 시간 전달
+                  time: files[index]['timestamp'],
                   description: files[index]['description'],
                   id: files[index]['id'],
                   favorite: files[index]['favorite']

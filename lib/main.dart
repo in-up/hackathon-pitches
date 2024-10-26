@@ -29,6 +29,9 @@ class _MyAppState extends ConsumerState<MyApp> {
         canvasColor: Color(0xFFfcfcfc),
         primaryColor: Color(0xFF1E0E62),
         textTheme: TextTheme(
+          headlineLarge: TextStyle(color: Color(0xFF60646C)),
+          headlineMedium: TextStyle(color: Color(0xFF60646C)),
+          headlineSmall: TextStyle(color: Color(0xFF60646C)),
           bodyMedium: TextStyle(color: Color(0xFF1E0E62)),
         ),
         fontFamily: 'Pretendard',

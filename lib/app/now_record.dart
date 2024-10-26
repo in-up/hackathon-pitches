@@ -157,7 +157,7 @@ class _NowRecordScreenState extends State<NowRecordScreen> {
         int difference = currentLength - lastLength;
 
         // 기준에 따라 색상을 변경합니다.
-        if (difference > 17) {
+        if (difference > 20) {
           borderColor = Color(0xffCE2C31); // 글자 차이가 17글자 초과일 때 빨간색
         } else {
           borderColor = Color(0xff208368); // 그렇지 않으면 초록색
@@ -190,13 +190,19 @@ class _NowRecordScreenState extends State<NowRecordScreen> {
 
     var box = Hive.box('localdata');
     await box.add({
-      'id': title,
+      'id': title, // 기본적으로 title을 id로 사용
       'title': title,
       'timestamp': timestamp,
       'webmFile': mp3Bytes,
       'description': description,
       'favorite': false,
+      'emotion': '', // 기본값: 빈 문자열
+      'end_time': 0, // 기본값: 0
+      'speech_rate': 0, // 기본값: 0
+      'start_time': 0, // 기본값: 0
+      'transcript': '', // 기본값: 빈 문자열
     });
+
 
     print('데이터가 Hive에 추가되었습니다: $title');
     printHiveData();
@@ -249,7 +255,7 @@ class _NowRecordScreenState extends State<NowRecordScreen> {
     }
   }
 
-  
+
   void stopListening() async {
     print('stopListening 호출됨');
     if (speech.isListening) {
@@ -267,11 +273,11 @@ class _NowRecordScreenState extends State<NowRecordScreen> {
 
         final reader = html.FileReader();
         reader.readAsArrayBuffer(blob);
-        
+
         reader.onLoadEnd.listen((event) async {
           final bytes = reader.result as Uint8List;
         });
-        
+
       } else {
         print('녹음된 데이터가 없습니다. Blob 크기: 0 bytes');
       }
@@ -297,12 +303,6 @@ class _NowRecordScreenState extends State<NowRecordScreen> {
             Navigator.pop(context);
           },
         ),
-        actions: [
-          CircleAvatar(
-            backgroundImage: NetworkImage('https://picsum.photos/200'),
-          ),
-          SizedBox(width: 10),
-        ],
       ),
       backgroundColor: Theme.of(context).canvasColor,
       body: Padding(
@@ -320,12 +320,22 @@ class _NowRecordScreenState extends State<NowRecordScreen> {
                 ),
               ),
             ),
+            SizedBox(height: 100,),
             if (lastWords.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Text(
-                  lastWords,
-                  style: TextStyle(fontSize: 24),
+              SingleChildScrollView(
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: SizedBox(
+                    height: 200,
+                    child: Text(
+                      lastWords,
+                      style: TextStyle(
+                        fontSize: 16,
+                        height: 1.25,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
                 ),
               ),
           ],

@@ -9,4 +9,5 @@ Future<void> init() async {
   await initializeDateFormatting('ko_KR', null);
   await Hive.initFlutter();
   var box = await Hive.openBox('localdata');
+  var box2 = await Hive.openBox('prompt');
 }
