@@ -1,15 +1,17 @@
 import 'dart:async';
-import 'dart:convert';
-import 'dart:html' as html;
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'package:speech_to_text/speech_recognition_result.dart';
-import 'package:speech_to_text/speech_to_text.dart';
-import 'package:hive/hive.dart';
-import 'package:path_provider/path_provider.dart';
 
 import '../components/halo.dart';
+import '../services/audio/audio_recording_service.dart';
+import '../services/speech/speech_recognition_service.dart';
+import '../domain/repositories/recording_repository.dart';
+import '../services/api/http_api_service.dart';
+import '../services/storage/hive_storage_service.dart';
+import '../domain/models/speech_analysis_model.dart';
+import '../core/constants/color_constants.dart';
+import '../core/constants/app_constants.dart';
+import '../core/constants/message_constants.dart';
 
 class NowRecordScreen extends StatefulWidget {
   @override
@@ -17,273 +19,124 @@ class NowRecordScreen extends StatefulWidget {
 }
 
 class _NowRecordScreenState extends State<NowRecordScreen> {
-  final SpeechToText speech = SpeechToText();
-  html.MediaRecorder? _mediaRecorder;
-  List<html.Blob> _recordedChunks = [];
-  bool isRecording = false;
-  bool _hasSpeech = false;
-  String lastWords = '';
-  String liveComment = '';
-  Color borderColor = Color(0xFF1E0E62);
-  int lastLength = 0;
-  late Timer colorChangeTimer;
+  // 서비스 의존성
+  late final AudioRecordingService _audioService;
+  late final SpeechRecognitionService _speechService;
+  late final RecordingRepository _recordingRepository;
+
+  // UI 상태
+  bool _isRecording = false;
+  String _lastWords = '';
+  Color _borderColor = ColorConstants.statusNormal;
+  String _liveComment = '';
+  int _lastLength = 0;
+  late Timer _colorChangeTimer;
 
   @override
   void initState() {
     super.initState();
-    initSpeechState();
+    _initializeServices();
+    _initializeSpeech();
   }
 
-  Future<void> initSpeechState() async {
-    var hasSpeech = await speech.initialize();
+  void _initializeServices() {
+    _audioService = AudioRecordingService();
+    _speechService = SpeechRecognitionService();
+    _recordingRepository = RecordingRepository(
+      apiService: HttpApiService(),
+      storageService: HiveStorageService(),
+    );
+  }
+
+  Future<void> _initializeSpeech() async {
+    final initialized = await _speechService.initialize();
     if (!mounted) return;
 
-    setState(() {
-      _hasSpeech = hasSpeech;
-    });
-
-    if (_hasSpeech) {
-      startListening();
+    if (initialized) {
+      _startRecording();
     }
   }
 
-  void startListening() async {
-    lastWords = '';
-    lastLength = 0;
+  Future<void> _startRecording() async {
+    _lastWords = '';
+    _lastLength = 0;
 
-    speech.listen(
-      onResult: resultListener,
-      listenFor: Duration(seconds: 99999),
-      partialResults: true,
+    // 음성 인식 시작
+    _speechService.startListening();
+    _speechService.transcriptionStream.listen((text) {
+      setState(() => _lastWords = text);
+    });
+
+    // 오디오 녹음 시작
+    try {
+      await _audioService.startRecording();
+
+      // 녹음 완료 리스너
+      _audioService.recordingCompleteStream.listen(_handleRecordingComplete);
+
+      setState(() => _isRecording = true);
+
+      // 실시간 분석 타이머 시작
+      _startAnalysisTimer();
+
+      print(MessageConstants.recordingStartedMessage);
+    } catch (e) {
+      print('${MessageConstants.recordingFailedMessage}: $e');
+    }
+  }
+
+  void _startAnalysisTimer() {
+    _colorChangeTimer = Timer.periodic(
+      Duration(seconds: AppConstants.timerIntervalSeconds),
+      (_) => _analyzeSpeedAndUpdateUI(),
     );
-
-    final mediaDevices = html.window.navigator.mediaDevices;
-
-    if (mediaDevices != null) {
-      final stream = await mediaDevices.getUserMedia({'audio': true});
-      _mediaRecorder = html.MediaRecorder(stream);
-
-      _mediaRecorder?.addEventListener('dataavailable',
-          (html.Event event) async {
-        final blobEvent = event as html.BlobEvent;
-        final blob = blobEvent.data;
-
-        if (blob != null && blob.size > 0) {
-          _recordedChunks.add(blob);
-          print('녹음된 Blob 크기: ${blob.size} bytes');
-
-          final reader = html.FileReader();
-          reader.readAsArrayBuffer(blob);
-
-          reader.onLoadEnd.listen((event) async {
-            final bytes = reader.result as Uint8List;
-            if (blob != null && blob.size > 0) {
-              _recordedChunks.add(blob);
-              print('녹음된 Blob 크기: ${blob.size} bytes');
-              final reader = html.FileReader();
-              reader.readAsArrayBuffer(blob);
-
-              reader.onLoadEnd.listen((event) async {});
-            }
-          });
-        }
-      });
-
-      _mediaRecorder?.addEventListener('stop', (html.Event event) async {
-        final blob = html.Blob(_recordedChunks);
-        print('녹음 완료: $blob');
-        print('녹음 파일 크기: ${blob.size} bytes');
-
-        final reader = html.FileReader();
-        reader.readAsArrayBuffer(blob);
-
-        reader.onLoadEnd.listen((event) async {
-          final bytes = reader.result as Uint8List;
-
-          if (bytes.isNotEmpty) {
-            final formData = http.MultipartRequest(
-              'POST',
-              Uri.parse('http://123.37.11.55:5000/fileupload'),
-            );
-            formData.files.add(http.MultipartFile.fromBytes(
-              'file',
-              bytes,
-              filename: 'recording.webm',
-            ));
-
-            try {
-              final response = await formData.send();
-              final responseBody = await http.Response.fromStream(response);
-
-              if (response.statusCode == 200) {
-                print('파일 업로드 성공');
-                print('서버 응답: ${responseBody.body}');
-
-                await saveToHive(bytes, responseBody.body);
-              } else {
-                print('파일 업로드 실패: ${response.statusCode}');
-                print('서버 응답: ${responseBody.body}');
-              }
-            } catch (e) {
-              print('업로드 중 오류 발생: $e');
-            }
-          } else {
-            print('전송할 바이트 배열이 비어 있습니다.');
-          }
-
-          Navigator.pushNamed(context, '/loading', arguments: lastWords);
-        });
-      });
-
-      try {
-        print("녹음을 시작합니다...");
-        _mediaRecorder?.start();
-        setState(() {
-          isRecording = true;
-        });
-        print("녹음이 시작되었습니다.");
-      } catch (e) {
-        print("녹음 시작 중 오류 발생: ${e.toString()}");
-      }
-
-      colorChangeTimer = Timer.periodic(Duration(seconds: 3), (timer) {
-        // 현재 lastWords의 길이를 가져옵니다.
-        int currentLength = lastWords.length;
-
-        // 길이 차이를 계산합니다.
-        int difference = currentLength - lastLength;
-
-        // 기준에 따라 색상을 변경합니다.
-        if (difference > 23) {
-          borderColor = Color(0xffCE2C31);
-          liveComment = '스피치 속도가 빨라졌어요';
-        } else if (difference > 2){
-          borderColor = Color(0xff208368); // 그렇지 않으면 초록색
-          liveComment = '잘하고 있어요!';
-        } else {
-          borderColor = Color(0xFF1E0E62); // 그렇지 않으면 초록색
-          liveComment = '';
-        }
-
-        // 마지막 길이를 현재 길이로 업데이트합니다.
-        lastLength = currentLength;
-
-        setState(() {});
-      });
-    } else {
-      print("mediaDevices가 null입니다. 이 브라우저는 getUserMedia를 지원하지 않을 수 있습니다.");
-    }
   }
 
-  void resultListener(SpeechRecognitionResult result) {
+  void _analyzeSpeedAndUpdateUI() {
+    int currentLength = _lastWords.length;
+    int difference = currentLength - _lastLength;
+
+    final analysis = SpeechAnalysisModel.analyze(difference);
+
     setState(() {
-      lastWords = result.recognizedWords;
+      _borderColor = analysis.borderColor;
+      _liveComment = analysis.comment;
+      _lastLength = currentLength;
     });
   }
 
-  Future<void> saveToHive(Uint8List mp3Bytes, String jsonResponse) async {
-    String title = jsonResponse.split('/').last.split('.').first;
-    String description = lastWords.isNotEmpty ? lastWords : '내용이 없는 스피치입니다.';
+  Future<void> _handleRecordingComplete(Uint8List audioBytes) async {
+    try {
+      final serverResponse = await _recordingRepository.uploadRecording(audioBytes);
 
-    DateTime now = DateTime.now();
-    String timestamp = now.toIso8601String();
+      await _recordingRepository.saveRecordingLocally(
+        audioBytes,
+        serverResponse,
+        _lastWords,
+      );
 
-    var box = Hive.box('localdata');
-    await box.add({
-      'id': title, // 기본적으로 title을 id로 사용
-      'title': title,
-      'timestamp': timestamp,
-      'webmFile': mp3Bytes,
-      'description': description,
-      'favorite': false,
-      'emotion': '', // 기본값: 빈 문자열
-      'end_time': 0, // 기본값: 0
-      'speech_rate': 0, // 기본값: 0
-      'start_time': 0, // 기본값: 0
-      'transcript': '', // 기본값: 빈 문자열
-    });
+      print(MessageConstants.uploadSuccessMessage);
 
-    print('데이터가 Hive에 추가되었습니다: $title');
-    printHiveData();
-  }
-
-  Future<void> printHiveData() async {
-    var box = await Hive.openBox('localdata');
-    for (int i = 0; i < box.length; i++) {
-      var data = box.getAt(i);
-      print('데이터 $i:');
-      print('  제목: ${data['title']}');
-      print('  타임스탬프: ${data['timestamp']}');
-      print('  웹엠 파일 크기: ${data['webmFile'].length} bytes');
-      print('  설명: ${data['description']}');
+      Navigator.pushNamed(context, '/loading', arguments: _lastWords);
+    } catch (e) {
+      print('${MessageConstants.uploadFailedMessage}: $e');
     }
   }
 
-  Future<void> loadFromHive() async {
-    var box = await Hive.openBox('localdata');
-
-    String? title = box.get('title');
-    String? timestamp = box.get('timestamp');
-    String? jsonResponse = box.get('json');
-    Uint8List? mp3Bytes = box.get('wav');
-
-    if (title != null) {
-      print("제목: $title");
-    } else {
-      print("제목이 저장되어 있지 않습니다.");
-    }
-
-    if (timestamp != null) {
-      print("타임스탬프: $timestamp");
-    } else {
-      print("타임스탬프가 저장되어 있지 않습니다.");
-    }
-
-    if (jsonResponse != null) {
-      print("JSON 응답: $jsonResponse");
-    } else {
-      print("JSON 응답이 저장되어 있지 않습니다.");
-    }
-
-    if (mp3Bytes != null) {
-      print("mp3 파일 크기: ${mp3Bytes.length} bytes");
-    } else {
-      print("mp3 파일이 저장되어 있지 않습니다.");
-    }
-  }
-
-  void stopListening() async {
+  void _stopRecording() {
     print('stopListening 호출됨');
-    if (speech.isListening) {
-      speech.stop();
-      _mediaRecorder?.stop();
-      colorChangeTimer.cancel();
-      setState(() {
-        isRecording = false;
-      });
-      print('녹음이 중지되었습니다.');
-      await loadFromHive();
-      if (_recordedChunks.isNotEmpty) {
-        final blob = html.Blob(_recordedChunks);
-        print('녹음된 Blob 크기: ${blob.size} bytes');
-
-        final reader = html.FileReader();
-        reader.readAsArrayBuffer(blob);
-
-        reader.onLoadEnd.listen((event) async {
-          final bytes = reader.result as Uint8List;
-        });
-      } else {
-        print('녹음된 데이터가 없습니다. Blob 크기: 0 bytes');
-      }
-    } else {
-      print('speech.isListening이 false입니다.');
-    }
+    _speechService.stopListening();
+    _audioService.stopRecording();
+    _colorChangeTimer.cancel();
+    setState(() => _isRecording = false);
+    print(MessageConstants.recordingStoppedMessage);
   }
 
   @override
   void dispose() {
-    colorChangeTimer.cancel();
+    _audioService.dispose();
+    _speechService.dispose();
+    _colorChangeTimer.cancel();
     super.dispose();
   }
 
@@ -312,8 +165,8 @@ class _NowRecordScreenState extends State<NowRecordScreen> {
               height: 200,
               child: Center(
                 child: BreathingButton(
-                  onPressed: stopListening, // 버튼을 누르면 녹음 종료
-                  borderColor: borderColor, // borderColor 적용
+                  onPressed: _stopRecording, // 버튼을 누르면 녹음 종료
+                  borderColor: _borderColor, // borderColor 적용
                   size: 180.0,
                 ),
               ),
@@ -322,19 +175,19 @@ class _NowRecordScreenState extends State<NowRecordScreen> {
               height: 100,
               child: Center(
                   child: Text(
-                liveComment,
+                _liveComment,
                 style:
-                    TextStyle(fontWeight: FontWeight.w700, color: borderColor, fontSize: 20),
+                    TextStyle(fontWeight: FontWeight.w700, color: _borderColor, fontSize: 20),
               )),
             ),
-            if (lastWords.isNotEmpty)
+            if (_lastWords.isNotEmpty)
               SingleChildScrollView(
                 child: Padding(
                   padding: const EdgeInsets.all(16.0),
                   child: SizedBox(
                     height: 200,
                     child: Text(
-                      lastWords,
+                      _lastWords,
                       style: TextStyle(
                         fontSize: 16,
                         height: 1.25,

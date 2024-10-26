@@ -1,11 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 import 'data/init.dart';
 import 'data/routes.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // .env 파일 로드
+  await dotenv.load(fileName: ".env");
+
   await init();
   runApp(ProviderScope(child: const MyApp()));
 }

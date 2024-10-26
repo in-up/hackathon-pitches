@@ -1,8 +1,11 @@
-import 'dart:convert'; // For jsonDecode
-import 'package:hive/hive.dart';
-import 'package:http/http.dart' as http; // For HTTP requests
 import 'package:flutter/material.dart';
 import 'package:pitches/app/markdown.dart';
+import '../domain/repositories/report_repository.dart';
+import '../domain/models/report_model.dart';
+import '../services/api/http_api_service.dart';
+import '../services/storage/hive_storage_service.dart';
+import '../core/constants/color_constants.dart';
+import '../core/constants/message_constants.dart';
 
 class MyApp extends StatelessWidget {
   @override
@@ -38,81 +41,43 @@ class Detail extends StatefulWidget {
 }
 
 class _DetailState extends State<Detail> {
-  String? report; // To hold the fetched description
-  String id = 'reporting';
-  String description = '안녕하세요.';
-  String emotion = 'EMO_UNKNOWN'; // Default emotion
-  String startTime = '0초';
-  String endTime = '16초';
-  String speed = '적당함';
-
-  bool isLoading = true; // To track loading state
+  late final ReportRepository _reportRepository;
+  ReportModel? _report;
+  bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
+    _reportRepository = ReportRepository(
+      apiService: HttpApiService(),
+      storageService: HiveStorageService(),
+    );
     _fetchReport();
   }
 
-  Future<void> printHiveData() async {
-    var box = await Hive.openBox('localdata');
-    for (int i = 0; i < box.length; i++) {
-      var data = box.getAt(i);
-      print('데이터 $i:');
-      print('  제목: ${data['title']}');
-      print('  타임스탬프: ${data['timestamp']}');
-      print('  웹엠 파일 크기: ${data['webmFile']?.length ?? 0} bytes'); // Null 체크 추가
-      print('  설명: ${data['description']}');
-      print('  즐겨찾기: ${data['favorite']}');
-      print('  감정: ${data['emotion']}');
-      print('  종료 시간: ${data['end_time']}');
-      print('  말하기 속도: ${data['speech_rate']}');
-      print('  시작 시간: ${data['start_time']}');
-    }
-  }
-
   Future<void> _fetchReport() async {
-    final response = await http.get(
-        Uri.parse('http://123.37.11.55:5000/report?filename=${widget.id}'));
+    if (widget.id == null) {
+      setState(() => _isLoading = false);
+      return;
+    }
 
-    if (response.statusCode == 200) {
-      final List<dynamic> data = jsonDecode(response.body);
-      if (data.isNotEmpty) {
-        final reportData = data[0];
+    try {
+      final report = await _reportRepository.fetchReport(widget.id!);
 
-        // Prepare the data to be saved in Hive
-        final Map<String, dynamic> report = {
-          'id': widget.id,
-          'title': widget.title,
-          'timestamp': DateTime.now().millisecondsSinceEpoch,
-          'webmFile': 'path/to/webm/file',
-          'description': reportData['description'] ?? '설명이 없습니다.',
-          'favorite': widget.favorite,
-          'emotion': reportData['emotion'],
-          'end_time': reportData['end_time'],
-          'speech_rate': reportData['speech_rate'],
-          'start_time': reportData['start_time'],
-        };
-
-        final box = Hive.box('localdata');
+      if (report != null) {
+        await _reportRepository.updateLocalRecordingWithReport(
+          widget.id!,
+          report,
+        );
 
         setState(() {
-          this.report = reportData['description'] ?? '설명이 없습니다.';
-          id = widget.id ?? 'reporting';
-          emotion = reportData['emotion'] ?? 'EMO_UNKNOWN';
-          startTime = reportData['start_time'].toString();
-          speed = reportData['speech_rate'].toString();
-          endTime = reportData['end_time'].toString();
-          description = widget.description ?? '안녕하세요.';
-          isLoading = false;
+          _report = report;
+          _isLoading = false;
         });
       }
-      printHiveData();
-    } else {
-      print('Failed to load report: ${response.statusCode}.');
-      setState(() {
-        isLoading = false;
-      });
+    } catch (e) {
+      print('${MessageConstants.reportLoadFailedMessage}: $e');
+      setState(() => _isLoading = false);
     }
   }
 
@@ -128,7 +93,7 @@ class _DetailState extends State<Detail> {
           },
         ),
       ),
-      body: isLoading
+      body: _isLoading
           ? Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
         child: Container(
@@ -139,7 +104,7 @@ class _DetailState extends State<Detail> {
             borderRadius: BorderRadius.circular(15),
             boxShadow: [
               BoxShadow(
-                color: Color(0xFF1E0E62).withOpacity(0.1),
+                color: ColorConstants.shadowColor,
                 offset: Offset(0, -4),
                 blurRadius: 20,
                 spreadRadius: 4,
@@ -154,10 +119,10 @@ class _DetailState extends State<Detail> {
                 shrinkWrap: true,
                 physics: NeverScrollableScrollPhysics(),
                 children: [
-                  _buildInfoCard("시작 시간", startTime ?? '정보 없음'),
-                  _buildInfoCard("종료 시간", endTime ?? '정보 없음'),
-                  _buildInfoCard("감정", emotion),
-                  _buildInfoCard("말하기 속도", speed),
+                  _buildInfoCard("시작 시간", _report?.startTime.toString() ?? '정보 없음'),
+                  _buildInfoCard("종료 시간", _report?.endTime.toString() ?? '정보 없음'),
+                  _buildInfoCard("감정", _report?.emotion ?? 'EMO_UNKNOWN'),
+                  _buildInfoCard("말하기 속도", _report?.speechRate.toString() ?? '정보 없음'),
                 ],
               ),
 
@@ -184,7 +149,7 @@ class _DetailState extends State<Detail> {
                     Container(
                       width: double.infinity,
                       child: Text(
-                        description ?? '설명이 없습니다.',
+                        widget.description ?? _report?.description ?? '설명이 없습니다.',
                         style: TextStyle(
                           fontSize: 16,
                           height: 1.5,
@@ -204,7 +169,7 @@ class _DetailState extends State<Detail> {
                   borderRadius: BorderRadius.circular(10),
                   boxShadow: [
                     BoxShadow(
-                      color: Color(0xFF1E0E62).withOpacity(0.1),
+                      color: ColorConstants.shadowColor,
                       offset: Offset(0, -4),
                       blurRadius: 20,
                       spreadRadius: 4,
@@ -217,9 +182,9 @@ class _DetailState extends State<Detail> {
                       context,
                       MaterialPageRoute(
                         builder: (context) => MarkdownExample(
-                          id: id,
-                          description: description,
-                          emotion: emotion,
+                          id: widget.id ?? 'reporting',
+                          description: widget.description ?? _report?.description ?? '설명이 없습니다.',
+                          emotion: _report?.emotion ?? 'EMO_UNKNOWN',
                         ),
                       ),
                     );
@@ -254,7 +219,7 @@ class _DetailState extends State<Detail> {
         borderRadius: BorderRadius.circular(10),
         boxShadow: [
           BoxShadow(
-            color: Color(0xFF1E0E62).withOpacity(0.1),
+            color: ColorConstants.shadowColor,
             offset: Offset(0, 2),
             blurRadius: 10,
             spreadRadius: 2,
