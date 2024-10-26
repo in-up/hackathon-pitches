@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'dart:convert'; // JSON 처리를 위해 추가
+import 'dart:convert';
 import 'dart:html' as html;
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
@@ -9,7 +9,7 @@ import 'package:speech_to_text/speech_to_text.dart';
 import 'package:hive/hive.dart';
 import 'package:path_provider/path_provider.dart';
 
-import '../components/halo.dart'; // BreathingButton의 경로 확인
+import '../components/halo.dart';
 
 class NowRecordScreen extends StatefulWidget {
   @override
@@ -24,9 +24,9 @@ class _NowRecordScreenState extends State<NowRecordScreen> {
 
   bool _hasSpeech = false;
   String lastWords = '';
-  Color borderColor = Colors.green; // 초기 borderColor
-  int lastLength = 0; // 마지막 문자열 길이
-  late Timer colorChangeTimer; // 색상 변경 타이머
+  Color borderColor = Colors.green;
+  int lastLength = 0;
+  late Timer colorChangeTimer;
 
   @override
   void initState() {
@@ -69,18 +69,24 @@ class _NowRecordScreenState extends State<NowRecordScreen> {
 
         if (blob != null && blob.size > 0) {
           _recordedChunks.add(blob);
-          print('녹음된 Blob 크기: ${blob.size} bytes'); // Blob 크기 확인
+          print('녹음된 Blob 크기: ${blob.size} bytes');
 
-          // Blob을 ArrayBuffer로 읽기
           final reader = html.FileReader();
           reader.readAsArrayBuffer(blob);
 
           reader.onLoadEnd.listen((event) async {
             final bytes = reader.result as Uint8List;
+            if (blob != null && blob.size > 0) {
+              _recordedChunks.add(blob);
+              print('녹음된 Blob 크기: ${blob.size} bytes');
+              final reader = html.FileReader();
+              reader.readAsArrayBuffer(blob);
 
-            // saveToHive 메소드 호출
-            // mp3Bytes와 jsonResponse는 어떻게 제공할지 결정해야 합니다.
-            await saveToHive(bytes, '{"title": "녹음 제목"}'); // JSON 응답 예시
+              reader.onLoadEnd.listen((event) async {
+
+              });
+            }
+
           });
         }
       });
@@ -90,14 +96,12 @@ class _NowRecordScreenState extends State<NowRecordScreen> {
         print('녹음 완료: $blob');
         print('녹음 파일 크기: ${blob.size} bytes');
 
-        // Blob을 ArrayBuffer로 읽기
         final reader = html.FileReader();
         reader.readAsArrayBuffer(blob);
 
         reader.onLoadEnd.listen((event) async {
           final bytes = reader.result as Uint8List;
 
-          // 서버로 업로드 요청 보내기
           if (bytes.isNotEmpty) {
             final formData = http.MultipartRequest(
               'POST',
@@ -106,15 +110,19 @@ class _NowRecordScreenState extends State<NowRecordScreen> {
             formData.files.add(http.MultipartFile.fromBytes(
               'file',
               bytes,
-              filename: 'recording.wav',
+              filename: 'recording.webm',
             ));
 
             try {
               final response = await formData.send();
               final responseBody = await http.Response.fromStream(response);
+
               if (response.statusCode == 200) {
                 print('파일 업로드 성공');
                 print('서버 응답: ${responseBody.body}');
+
+                await saveToHive(bytes, responseBody.body);
+
               } else {
                 print('파일 업로드 실패: ${response.statusCode}');
                 print('서버 응답: ${responseBody.body}');
@@ -125,6 +133,7 @@ class _NowRecordScreenState extends State<NowRecordScreen> {
           } else {
             print('전송할 바이트 배열이 비어 있습니다.');
           }
+
           Navigator.pushNamed(context, '/loading', arguments: lastWords);
         });
       });
@@ -160,45 +169,46 @@ class _NowRecordScreenState extends State<NowRecordScreen> {
     });
   }
 
-  // Hive에 mp3 파일과 JSON 응답 저장
   Future<void> saveToHive(Uint8List mp3Bytes, String jsonResponse) async {
-    // 'localdata'라는 이름의 박스를 엽니다.
-    var box = await Hive.openBox('localdata');
+    String title = jsonResponse.split('/').last.split('.').first;
+    String description = '여기에 설명을 추가하세요.';
 
-    // 현재 시간을 가져와서 타임스탬프를 생성합니다.
     DateTime now = DateTime.now();
-    String timestamp = now.toIso8601String(); // ISO 8601 형식으로 변환
+    String timestamp = now.toIso8601String();
 
-    // JSON 파싱하여 제목을 가져옵니다.
-    String title;
-    try {
-      final Map<String, dynamic> jsonMap = json.decode(jsonResponse);
-      title = jsonMap['title'] ?? '제목 없음'; // 제목이 없으면 기본값 설정
-    } catch (e) {
-      title = '제목 없음'; // JSON 파싱 실패 시 기본 제목
-    }
-
-    // 데이터를 리스트 형태로 저장합니다.
+    var box = Hive.box('localdata');
     await box.add({
-      'title': title,        // JSON 제목
-      'timestamp': timestamp,// 현재 시간
-      'json': jsonResponse,  // JSON 응답
-      'wav': mp3Bytes,       // 음성 파일
+      'title': title,
+      'timestamp': timestamp,
+      'webmFile': mp3Bytes,
+      'description': description,
     });
 
-    
+    print('데이터가 Hive에 추가되었습니다: $title');
+    printHiveData();
   }
+
+  Future<void> printHiveData() async {
+    var box = await Hive.openBox('localdata');
+    for (int i = 0; i < box.length; i++) {
+      var data = box.getAt(i);
+      print('데이터 $i:');
+      print('  제목: ${data['title']}');
+      print('  타임스탬프: ${data['timestamp']}');
+      print('  웹엠 파일 크기: ${data['webmFile'].length} bytes');
+      print('  설명: ${data['description']}');
+    }
+  }
+
+
   Future<void> loadFromHive() async {
-    // 'localdata'라는 이름의 박스를 엽니다.
     var box = await Hive.openBox('localdata');
 
-    // 저장된 데이터 불러오기
     String? title = box.get('title');
     String? timestamp = box.get('timestamp');
     String? jsonResponse = box.get('json');
     Uint8List? mp3Bytes = box.get('wav');
 
-    // 데이터를 확인합니다.
     if (title != null) {
       print("제목: $title");
     } else {
@@ -236,18 +246,15 @@ class _NowRecordScreenState extends State<NowRecordScreen> {
       });
       print('녹음이 중지되었습니다.');
       await loadFromHive();
-      // Blob 생성 전에 _recordedChunks의 상태를 확인합니다.
       if (_recordedChunks.isNotEmpty) {
         final blob = html.Blob(_recordedChunks);
-        print('녹음된 Blob 크기: ${blob.size} bytes'); // 확인용 로그 추가
+        print('녹음된 Blob 크기: ${blob.size} bytes');
 
-        // Blob을 ArrayBuffer로 읽기
         final reader = html.FileReader();
         reader.readAsArrayBuffer(blob);
         
         reader.onLoadEnd.listen((event) async {
           final bytes = reader.result as Uint8List;
-          // bytes를 여기서 처리
         });
         
       } else {
@@ -292,8 +299,8 @@ class _NowRecordScreenState extends State<NowRecordScreen> {
               height: 200,
               child: Center(
                 child: BreathingButton(
-                  onPressed: stopListening, // 버튼을 누르면 녹음 종료
-                  borderColor: borderColor, // borderColor 적용
+                  onPressed: stopListening,
+                  borderColor: borderColor,
                 ),
               ),
             ),
