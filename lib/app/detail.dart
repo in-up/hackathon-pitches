@@ -5,7 +5,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      home: Detail(title: '예시 제목', time: '1일 전'), // title과 time 전달
+      home: Detail(id:'recording_id', title: '스피치', time: '1일 전'),
       routes: {
         '/markdown': (context) => MarkdownExample(), // 라우트 추가
       },
@@ -14,10 +14,12 @@ class MyApp extends StatelessWidget {
 }
 
 class Detail extends StatefulWidget {
+  final String? id;
   final String? title; // 제목
   final String? time; // 시간
 
   Detail({
+    this.id,
     this.title,
     this.time, String? content,
   });

@@ -190,6 +190,7 @@ class _NowRecordScreenState extends State<NowRecordScreen> {
 
     var box = Hive.box('localdata');
     await box.add({
+      'id': title,
       'title': title,
       'timestamp': timestamp,
       'webmFile': mp3Bytes,
