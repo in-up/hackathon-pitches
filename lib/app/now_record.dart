@@ -12,6 +12,9 @@ import '../domain/models/speech_analysis_model.dart';
 import '../core/constants/color_constants.dart';
 import '../core/constants/app_constants.dart';
 import '../core/constants/message_constants.dart';
+import '../services/audio/audio_chunk_manager.dart';
+import '../services/api/websocket_service.dart';
+import '../services/audio/sliding_window_service.dart';
 
 class NowRecordScreen extends StatefulWidget {
   @override
@@ -19,16 +22,18 @@ class NowRecordScreen extends StatefulWidget {
 }
 
 class _NowRecordScreenState extends State<NowRecordScreen> {
-  // 서비스 의존성
+  // 서비스
   late final AudioRecordingService _audioService;
   late final SpeechRecognitionService _speechService;
   late final RecordingRepository _recordingRepository;
+  late final AudioChunkManager _chunkManager;
 
   // UI 상태
   bool _isRecording = false;
   String _lastWords = '';
   Color _borderColor = ColorConstants.statusNormal;
   String _liveComment = '';
+  String _serverFeedback = '';
   int _lastLength = 0;
   late Timer _colorChangeTimer;
 
@@ -45,6 +50,10 @@ class _NowRecordScreenState extends State<NowRecordScreen> {
     _recordingRepository = RecordingRepository(
       apiService: HttpApiService(),
       storageService: HiveStorageService(),
+    );
+    _chunkManager = AudioChunkManager(
+      wsService: WebSocketService(),
+      slidingWindowService: SlidingWindowService(),
     );
   }
 
@@ -69,14 +78,25 @@ class _NowRecordScreenState extends State<NowRecordScreen> {
 
     // 오디오 녹음 시작
     try {
-      await _audioService.startRecording();
+      // WebSocket 연결
+      await _chunkManager.initialize();
 
-      // 녹음 완료 리스너
+      // 500ms timeslice
+      await _audioService.startRecording(timeslice: 500);
+      _chunkManager.startStreaming(_audioService.audioChunkStream);
+
+      // 결과 수신
+      _chunkManager.responseStream.listen((response) {
+        print('실시간 분석 결과: $response');
+        _handleServerResponse(response);
+      });
+
+      // 녹음 완료 리스너 (전체 파일 저장용)
       _audioService.recordingCompleteStream.listen(_handleRecordingComplete);
 
       setState(() => _isRecording = true);
 
-      // 실시간 분석 타이머 시작
+      // 로컬 분석 타이머
       _startAnalysisTimer();
 
       print(MessageConstants.recordingStartedMessage);
@@ -105,9 +125,76 @@ class _NowRecordScreenState extends State<NowRecordScreen> {
     });
   }
 
+  void _handleServerResponse(Map<String, dynamic> response) {
+    try {
+      String feedback = '';
+
+      // 감정 분석 결과
+      if (response.containsKey('emotion')) {
+        final emotion = response['emotion'];
+        feedback += _getEmotionFeedback(emotion);
+      }
+
+      // 발음/유창성
+      if (response.containsKey('fluency_score')) {
+        final score = response['fluency_score'];
+        if (score is num && score < 0.5) {
+          feedback += '\n${MessageConstants.fluencyLow}';
+        }
+      }
+
+      // 서버에서 직접 피드백 메시지를 보내는 경우
+      if (response.containsKey('feedback')) {
+        feedback = response['feedback'].toString();
+      }
+
+      // 속도 분석
+      if (response.containsKey('speech_rate')) {
+        final rate = response['speech_rate'];
+        if (rate == 'TOO_FAST') {
+          feedback += '\n${MessageConstants.rateTooFast}';
+        } else if (rate == 'TOO_SLOW') {
+          feedback += '\n${MessageConstants.rateTooSlow}';
+        }
+      }
+
+      setState(() {
+        _serverFeedback = feedback.trim();
+      });
+    } catch (e) {
+      print('서버 응답 처리 오류: $e');
+    }
+  }
+
+  String _getEmotionFeedback(String emotion) {
+    // 서버 응답 형식: <|EMOTION|>
+    final cleanEmotion = emotion.replaceAll(RegExp(r'<\||>'), '').toUpperCase();
+
+    switch (cleanEmotion) {
+      case 'HAPPY':
+        return MessageConstants.emotionHappy;
+      case 'SAD':
+        return MessageConstants.emotionSad;
+      case 'ANGRY':
+        return MessageConstants.emotionAngry;
+      case 'NEUTRAL':
+        return MessageConstants.emotionNeutral;
+      case 'FEARFUL':
+        return MessageConstants.emotionFearful;
+      case 'DISGUSTED':
+        return MessageConstants.emotionDisgusted;
+      case 'SURPRISED':
+        return MessageConstants.emotionSurprised;
+      case 'EMO_UNKNOWN':
+      default:
+        return '';
+    }
+  }
+
   Future<void> _handleRecordingComplete(Uint8List audioBytes) async {
     try {
-      final serverResponse = await _recordingRepository.uploadRecording(audioBytes);
+      final serverResponse =
+          await _recordingRepository.uploadRecording(audioBytes);
 
       await _recordingRepository.saveRecordingLocally(
         audioBytes,
@@ -127,6 +214,7 @@ class _NowRecordScreenState extends State<NowRecordScreen> {
     print('stopListening 호출됨');
     _speechService.stopListening();
     _audioService.stopRecording();
+    _chunkManager.stopStreaming();
     _colorChangeTimer.cancel();
     setState(() => _isRecording = false);
     print(MessageConstants.recordingStoppedMessage);
@@ -136,6 +224,7 @@ class _NowRecordScreenState extends State<NowRecordScreen> {
   void dispose() {
     _audioService.dispose();
     _speechService.dispose();
+    _chunkManager.dispose();
     _colorChangeTimer.cancel();
     super.dispose();
   }
@@ -173,12 +262,35 @@ class _NowRecordScreenState extends State<NowRecordScreen> {
             ),
             SizedBox(
               height: 100,
-              child: Center(
-                  child: Text(
-                _liveComment,
-                style:
-                    TextStyle(fontWeight: FontWeight.w700, color: _borderColor, fontSize: 20),
-              )),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  // 로컬 스피치 속도 분석 결과
+                  if (_liveComment.isNotEmpty)
+                    Text(
+                      _liveComment,
+                      style: TextStyle(
+                        fontWeight: FontWeight.w700,
+                        color: _borderColor,
+                        fontSize: 20,
+                      ),
+                    ),
+                  // 서버 실시간 분석 결과
+                  if (_serverFeedback.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8.0),
+                      child: Text(
+                        _serverFeedback,
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          color: ColorConstants.statusGood,
+                          fontSize: 16,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                ],
+              ),
             ),
             if (_lastWords.isNotEmpty)
               SingleChildScrollView(
