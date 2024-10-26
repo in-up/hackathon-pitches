@@ -70,20 +70,19 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           SizedBox(width: 10),
         ],
+        title: Text('pitches.ai'),
       ),
       backgroundColor: Theme.of(context).canvasColor,
       body: SingleChildScrollView( // Scrollable하게 만들기
         padding: const EdgeInsets.symmetric(horizontal: 20),
         child: Column(
           children: [
-            SizedBox(height: 100),
+            SizedBox(height: 50),
             SizedBox(
-              height: 200,
+              height: 250,
               child: Center(
-                child: Column(
-                  children: [
-                    BreathingButton(borderColor: Color(0xFF1E0E62), onPressed: (){Navigator.pushNamed(context, '/record');},),
-                  ],
+                child: Center(
+                  child: BreathingButton(borderColor: Color(0xFF1E0E62), onPressed: (){Navigator.pushNamed(context, '/record');},),
                 ),
               ),
             ),
@@ -97,8 +96,16 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             Container(
               decoration: BoxDecoration(
-                border: Border.all(color: Colors.grey.withOpacity(0.5)), // 연한 회색 테두리
-                borderRadius: BorderRadius.circular(12), // 둥근 테두리
+                color: Colors.white, // 배경색 설정
+                borderRadius: BorderRadius.circular(15), // 둥근 테두리
+                boxShadow: [
+                  BoxShadow(
+                    color: Color(0xFF1E0E62).withOpacity(0.1), // 그림자 색상
+                    offset: Offset(0, -4), // 위쪽 방향으로 이동
+                    blurRadius: 20, // 흐림 정도
+                    spreadRadius: 4, // 그림자의 넓이
+                  ),
+                ],
               ),
               child: SizedBox(
                 child: Column(

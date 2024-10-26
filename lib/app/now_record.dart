@@ -115,7 +115,6 @@ class _NowRecordScreenState extends State<NowRecordScreen> {
         });
       });
 
-
       try {
         print("녹음을 시작합니다...");
         _mediaRecorder?.start();
@@ -128,18 +127,29 @@ class _NowRecordScreenState extends State<NowRecordScreen> {
       }
 
       colorChangeTimer = Timer.periodic(Duration(seconds: 3), (timer) {
-        if (lastWords.length > lastLength) {
-          lastLength = lastWords.length;
-          borderColor = Colors.red;
+        // 현재 lastWords의 길이를 가져옵니다.
+        int currentLength = lastWords.length;
+
+        // 길이 차이를 계산합니다.
+        int difference = currentLength - lastLength;
+
+        // 기준에 따라 색상을 변경합니다.
+        if (difference > 17) {
+          borderColor = Colors.red; // 글자 차이가 17글자 초과일 때 빨간색
         } else {
-          borderColor = Colors.green;
+          borderColor = Colors.green; // 그렇지 않으면 초록색
         }
+
+        // 마지막 길이를 현재 길이로 업데이트합니다.
+        lastLength = currentLength;
+
         setState(() {});
       });
     } else {
       print("mediaDevices가 null입니다. 이 브라우저는 getUserMedia를 지원하지 않을 수 있습니다.");
     }
   }
+
 
   void resultListener(SpeechRecognitionResult result) {
     setState(() {

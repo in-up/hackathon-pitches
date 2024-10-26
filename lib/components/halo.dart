@@ -59,7 +59,7 @@ class _BreathingButtonState extends State<BreathingButton>
             height: _animation.value,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              border: Border.all(color: widget.borderColor, width: 25),
+              border: Border.all(color: widget.borderColor, width: 30),
             ),
           );
         },
