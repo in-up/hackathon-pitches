@@ -82,7 +82,7 @@ class _HomeScreenState extends State<HomeScreen> {
               child: Center(
                 child: Column(
                   children: [
-                    BreathingButton(borderColor: Colors.blue, onPressed: (){Navigator.pushNamed(context, '/record');},),
+                    BreathingButton(borderColor: Color(0xFF1E0E62), onPressed: (){Navigator.pushNamed(context, '/record');},),
                   ],
                 ),
               ),

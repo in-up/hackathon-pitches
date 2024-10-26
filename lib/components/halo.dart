@@ -4,13 +4,11 @@ import '../app/home.dart'; // HomeScreen 경로 확인
 
 class BreathingButton extends StatefulWidget {
   final Color borderColor; // 버튼의 테두리 색상
-  final Color pressedColor; // 버튼이 눌렸을 때 색상
   final VoidCallback? onPressed; // 클릭 시 호출될 콜백
 
   BreathingButton({
-    this.borderColor = Colors.black,
-    this.pressedColor = Colors.red,
-    this.onPressed, // 기본값은 null
+    this.borderColor = const Color(0xFF1E0E62),
+    this.onPressed,
   });
 
   @override
@@ -61,7 +59,7 @@ class _BreathingButtonState extends State<BreathingButton>
             height: _animation.value,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              border: Border.all(color: widget.pressedColor, width: 25),
+              border: Border.all(color: widget.borderColor, width: 25),
             ),
           );
         },

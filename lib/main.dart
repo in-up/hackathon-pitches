@@ -27,6 +27,7 @@ class _MyAppState extends ConsumerState<MyApp> {
       theme: ThemeData(
         useMaterial3: false,
         canvasColor: Color(0xFFfcfcfc),
+        primaryColor: Color(0xFF1E0E62),
         fontFamily: 'Pretendard',
         pageTransitionsTheme: const PageTransitionsTheme(builders: {
           TargetPlatform.android: CupertinoPageTransitionsBuilder(),

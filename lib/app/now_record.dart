@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:speech_to_text/speech_recognition_result.dart';
 import 'package:speech_to_text/speech_to_text.dart';
@@ -12,6 +14,9 @@ class _NowRecordScreenState extends State<NowRecordScreen> {
   final SpeechToText speech = SpeechToText();
   bool _hasSpeech = false;
   String lastWords = '';
+  Color borderColor = Colors.green; // 초기 borderColor
+  int lastLength = 0; // 마지막 문자열 길이
+  late Timer colorChangeTimer; // 색상 변경 타이머
 
   @override
   void initState() {
@@ -35,11 +40,23 @@ class _NowRecordScreenState extends State<NowRecordScreen> {
 
   void startListening() {
     lastWords = '';
+    lastLength = 0;
     speech.listen(
       onResult: resultListener,
-      listenFor: Duration(seconds: 99999), // 충분히 긴 시간 설정
+      listenFor: Duration(seconds: 99999),
       partialResults: true,
     );
+
+    // 3초마다 borderColor 업데이트
+    colorChangeTimer = Timer.periodic(Duration(seconds: 3), (timer) {
+      if (lastWords.length > lastLength) {
+        lastLength = lastWords.length;
+        borderColor = Colors.red; // 증가했으면 빨간색
+      } else {
+        borderColor = Colors.green; // 변화가 없으면 초록색
+      }
+      setState(() {});
+    });
   }
 
   void resultListener(SpeechRecognitionResult result) {
@@ -51,8 +68,15 @@ class _NowRecordScreenState extends State<NowRecordScreen> {
   void stopListening() {
     if (speech.isListening) {
       speech.stop();
+      colorChangeTimer.cancel(); // 타이머 종료
       Navigator.pushNamed(context, '/loading', arguments: lastWords);
     }
+  }
+
+  @override
+  void dispose() {
+    colorChangeTimer.cancel(); // 화면 종료 시 타이머 정리
+    super.dispose();
   }
 
   @override
@@ -83,6 +107,7 @@ class _NowRecordScreenState extends State<NowRecordScreen> {
               child: Center(
                 child: BreathingButton(
                   onPressed: stopListening, // 버튼을 누르면 녹음 종료
+                  borderColor: borderColor, // borderColor 적용
                 ),
               ),
             ),
