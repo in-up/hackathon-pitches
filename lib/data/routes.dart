@@ -6,6 +6,7 @@ import '../app/home.dart';
 import '../app/now_record.dart';
 import '../app/setting.dart';
 import '../app/markdown.dart';
+import '../app/detail.dart';
 
 final Widget homeRoute = HomeScreen();
 
@@ -17,4 +18,5 @@ final Map<String, WidgetBuilder> routes = {
   '/setting': (context) => SettingsScreen(),
   '/loading': (context) => LoadingScreen(),
   '/markdown': (context) => MarkdownExample(),
+  '/detail' : (context) => Detail(),
 };

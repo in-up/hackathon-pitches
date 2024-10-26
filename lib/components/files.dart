@@ -1,4 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:pitches/app/markdown.dart';
+
+import '../app/detail.dart';
+
+class MyApp extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: FileList(), // FileList를 시작 페이지로 설정
+      routes: {
+        '/markdown': (context) => MarkdownExample(), // 라우트 추가
+        // '/detail' 라우트는 FileList에서 처리하므로 여기서는 필요 없음
+      },
+    );
+  }
+}
 
 class FileList extends StatefulWidget {
   @override
@@ -19,9 +35,21 @@ class _FileListState extends State<FileList> {
       itemCount: files.length,
       itemBuilder: (context, index) {
         return ListTile(
-          leading: Icon(Icons.description_outlined, color: Colors.black,),
-          title: Text(files[index]['title']!),
+          leading: Icon(Icons.description_outlined, color: Colors.black),
+          title: Text(files[index]['title']!), 
           trailing: Text(files[index]['time']!),
+          onTap: () {
+            // ListTile 클릭 시 detail 페이지로 이동
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => Detail(
+                  title: files[index]['title'], // title 전달
+                  time: files[index]['time'],   // time 전달
+                ),
+              ),
+            );
+          },
         );
       },
     );
