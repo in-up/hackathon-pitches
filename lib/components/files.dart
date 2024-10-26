@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 import 'package:intl/intl.dart'; // 날짜 포맷을 위한 패키지 추가
+import 'package:pitches/app/filelist.dart';
 import '../app/detail.dart';
 import '../app/markdown.dart';
 
@@ -37,6 +38,8 @@ class _FileListState extends State<FileList> {
         'title': file['title'],
         'timestamp': file['timestamp'],
         'favorite': file['favorite'],
+        'description' : file['description'],
+        'id' : file['id']
       };
     }).toList();
 
@@ -77,6 +80,9 @@ class _FileListState extends State<FileList> {
                 builder: (context) => Detail(
                   title: files[index]['title'], // title 전달
                   time: _relativeTime(files[index]['timestamp']), // 상대 시간 전달
+                  description: files[index]['description'],
+                  id: files[index]['id'],
+                  favorite: files[index]['favorite']
                 ),
               ),
             );

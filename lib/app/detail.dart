@@ -17,11 +17,15 @@ class Detail extends StatefulWidget {
   final String? id;
   final String? title; // 제목
   final String? time; // 시간
+  final String? description;
+  final bool? favorite;
 
   Detail({
     this.id,
     this.title,
-    this.time, String? content,
+    this.time,
+    this.description,
+    this.favorite,
   });
 
   @override
@@ -184,7 +188,7 @@ class _DetailState extends State<Detail> {
                     Container(
                       width: double.infinity, // 가로 길이를 최대화
                       child: Text(
-                        "게임은 즐기기 위해서 만들어진다.",
+                        widget.description ?? '',
                         style: TextStyle(fontSize: 14),
                       ),
                     ),
