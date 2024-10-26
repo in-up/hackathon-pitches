@@ -22,7 +22,7 @@ class MenuScreen extends StatelessWidget {
             leading: Icon(Icons.home_outlined),
             title: Text('홈'),
             onTap: () {
-              Navigator.pushNamed(context, '/home');
+              Navigator.pop(context);
             },
           ),
           ListTile(

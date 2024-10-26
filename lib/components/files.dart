@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:pitches/app/markdown.dart';
-
+import 'package:hive/hive.dart';
+import 'package:intl/intl.dart'; // 날짜 포맷을 위한 패키지 추가
 import '../app/detail.dart';
+import '../app/markdown.dart';
 
 class MyApp extends StatelessWidget {
   @override
@@ -10,7 +11,6 @@ class MyApp extends StatelessWidget {
       home: FileList(), // FileList를 시작 페이지로 설정
       routes: {
         '/markdown': (context) => MarkdownExample(), // 라우트 추가
-        // '/detail' 라우트는 FileList에서 처리하므로 여기서는 필요 없음
       },
     );
   }
@@ -22,22 +22,53 @@ class FileList extends StatefulWidget {
 }
 
 class _FileListState extends State<FileList> {
-  final List<Map<String, String>> files = [
-    {'title': '파일 1', 'time': '1일 전'},
-    {'title': '파일 2', 'time': '3일 전'},
-    {'title': '파일 3', 'time': '5일 전'},
-    {'title': '파일 4', 'time': '7일 전'},
-  ];
+  List<Map<String, dynamic>> files = [];
+
+  @override
+  void initState() {
+    super.initState();
+    getFiles();
+  }
+
+  void getFiles() {
+    var box = Hive.box('localdata');
+    files = box.values.map((file) {
+      return {
+        'title': file['title'],
+        'timestamp': file['timestamp'],
+        'favorite': file['favorite'],
+      };
+    }).toList();
+
+    setState(() {}); // UI 업데이트
+  }
+
+  String _relativeTime(String timestamp) {
+    final DateTime time = DateTime.parse(timestamp);
+    final Duration difference = DateTime.now().difference(time);
+
+    if (difference.inDays > 0) {
+      return '${difference.inDays}일 전';
+    } else if (difference.inHours > 0) {
+      return '${difference.inHours}시간 전';
+    } else if (difference.inMinutes > 0) {
+      return '${difference.inMinutes}분 전';
+    } else {
+      return '방금';
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    return ListView.builder(
+    return files.isEmpty
+        ? Center(child: Text('저장된 파일이 없습니다'))
+        : ListView.builder(
       itemCount: files.length,
       itemBuilder: (context, index) {
         return ListTile(
           leading: Icon(Icons.description_outlined, color: Colors.black),
-          title: Text(files[index]['title']!), 
-          trailing: Text(files[index]['time']!),
+          title: Text(files[index]['title']),
+          trailing: Text(_relativeTime(files[index]['timestamp'])),
           onTap: () {
             // ListTile 클릭 시 detail 페이지로 이동
             Navigator.push(
@@ -45,7 +76,7 @@ class _FileListState extends State<FileList> {
               MaterialPageRoute(
                 builder: (context) => Detail(
                   title: files[index]['title'], // title 전달
-                  time: files[index]['time'],   // time 전달
+                  time: _relativeTime(files[index]['timestamp']), // 상대 시간 전달
                 ),
               ),
             );

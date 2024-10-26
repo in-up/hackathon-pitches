@@ -182,7 +182,8 @@ class _NowRecordScreenState extends State<NowRecordScreen> {
 
   Future<void> saveToHive(Uint8List mp3Bytes, String jsonResponse) async {
     String title = jsonResponse.split('/').last.split('.').first;
-    String description = '여기에 설명을 추가하세요.';
+
+    String description = lastWords.isNotEmpty ? lastWords : '내용이 없는 스피치입니다.';
 
     DateTime now = DateTime.now();
     String timestamp = now.toIso8601String();
@@ -193,11 +194,13 @@ class _NowRecordScreenState extends State<NowRecordScreen> {
       'timestamp': timestamp,
       'webmFile': mp3Bytes,
       'description': description,
+      'favorite': false,
     });
 
     print('데이터가 Hive에 추가되었습니다: $title');
     printHiveData();
   }
+
 
   Future<void> printHiveData() async {
     var box = await Hive.openBox('localdata');
